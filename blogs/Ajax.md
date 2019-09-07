@@ -14,16 +14,11 @@
 + 创建 XMLHttpRequest 对象
 
 ```
-// 不能这样写，会提示 ActiveXObject is not defined
-const xmlHttp = new XMLHttpRequest() || new ActiveXObject('Microsoft.XMLHTTP') // 兼容 IE5 IE6
-```
-
-```
-let xmlHttp;
+let xhr;
 if (window.XMLHttpRequest) {
-  xmlHttp = new XMLHttpRequest()
+  xhr = new XMLHttpRequest()
 } else {
-  xmlHttp = new ActiveXObject('Microsolf.XMLHTTP')
+  xhr = new ActiveXObject('Microsolf.XMLHTTP')
 }
 ```
 
@@ -36,7 +31,8 @@ if (window.XMLHttpRequest) {
    * url -- 请求地址
    * async -- 是否异步发起请求
    */
-  xmlHttp.open(type, url, async)
+  xhr.open(type, url, async)
+
   ```
   - POST
   
@@ -44,19 +40,19 @@ if (window.XMLHttpRequest) {
   /**
    * POST 请求比 GET 请求多一步，发送数据
    */
-  xmlHttp.open()
-  xmlHttp.send(data)
+  xhr.open()
+  xhr.send(data)
   ```
   
   - 设置请求头
   
   ```
-  xmlHttp.setRequestHeader(key, value)
+  xhr.setRequestHeader(key, value)
   // 一般前后端使用 JSON 数据格式进行交互，所以我们要设置请求头为
   ('Content-Type', 'application/json')
   ```
   
-+ 根据 xmlHttp 的 readyState 属性判断状态
++ 根据 xhr 的 readyState 属性判断状态
   **readyState 属性的值**
     - 0：请求未初始化，open 还没有调用
     - 1：服务器连接已建立，已经调用了 send(),正在发送请求
@@ -81,16 +77,125 @@ if (window.XMLHttpRequest) {
 |-|-|-|
 | method | 请求方法 | String | GET/POST | GET |
 | url | 请求地址 | String | 略 | 空 |
-| flag | 是否异步 | Boolean | true/false | true |
-| params | 请求参数 | Object | {} | 空 |
+| async | 是否异步 | Boolean | true/false | true |
+| data | 请求参数 | Object | {} | 空 |
 | cb | 回调函数 | Function | func | 空 |
 
-*注意事项*
-
-* 大家分开
 
 ```
-const request = function ()
+const request = function (options) {
+  let xhr = null
+  // 对传递的数据格式化
+  let params = fomateParams(options.data)
+  // 兼容处理 IE6、IE7
+  if (window.XMLHttpRequest) {
+    xhr = new XMLHttpRequest()
+  } else {
+    xhr = new ActiveXObject()
+  }
+  
+  /**
+   * 判断请求类型
+   * GET 请求直接把格式化后的数据拼接到 URL 后面，不需要设置请求头，不需要调用 send 方法
+   * POST 请求，设置请求头，调用 send 方法，传入 处理后的数据
+   */
+  if (options.type === 'GET') {
+    xhr.open(options.type, options.url + params, options.async)
+  } else if (options.type === 'POST') {
+    xhr.setRequestHeader('Content-type', 'application/x-www-from-urlencoded')
+    xhr.open(options.type, options.url, options.async)
+    xhr.send(params)
+  }
+
+  /**
+   * 绑定 readystatechange 事件，判断响应信息
+   */
+  xhr.addEventListener('readystatechange', function () {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+      options.success(xhr.responseText)
+    }
+  })
+  
+  // 定义格式化数据的方法，把对象形式参数转换成 URL 形式的字符串
+  const fomateParams = function (obj) {
+    if (obj === null) {
+      return null
+    }
+    let arr = []
+    for (let key in obj) {
+      arr.push(key + '=' + obj[key])
+    }
+    return arr.join('&')
+  }
+}
+
+// 调用方法
+request({
+ method: 'GET',
+ url: '',
+ async: true,
+ data: {
+  username: 'tim',
+  password: '123123123'
+ },
+ success: function (res) {
+   console.log(res)
+ }
+})
+```
+
+**上面是第一次写的版本，存在诸多问题**
+
+* onreadystatechange 的字母都是小写，而不是驼峰 onReadyStateChange，readyStete 属性是驼峰
+* readystatechange 应该绑定在 open 方法调用之前，不然感知不到（前面明明说了 readyState 的五种状态，粗心阿）
+* 如果使用函数表达式定义格式化数据方法，那么就要放在使用它之前声明（函数表达式不会变量提升，函数声明才会）
+
+**改良过后**
+
+```
+const request = function (options) {
+  let xhr = null
+  // 对传递的数据格式化
+  let params = fomateParams(options.data)
+  // 兼容处理 IE6、IE7
+  if (window.XMLHttpRequest) {
+    xhr = new XMLHttpRequest()
+  } else {
+    xhr = new ActiveXObject()
+  }
+
+  // readystatechange 事件绑定在 open 方法调用之前
+  xhr.addEventListener('readystatechange', function () {
+    if (xhr.readyState === 4 && xhr.status === 200) {
+      options.success(xhr.responseText)
+    }
+  })
+  
+  /**
+   * 判断请求类型
+   * GET 请求直接把格式化后的数据拼接到 URL 后面，不需要设置请求头，不需要调用 send 方法
+   * POST 请求，设置请求头，调用 send 方法，传入 处理后的数据
+   */
+  if (options.type === 'GET') {
+    xhr.open(options.type, options.url + params, options.async)
+  } else if (options.type === 'POST') {
+    xhr.setRequestHeader('Content-type', 'application/x-www-from-urlencoded')
+    xhr.open(options.type, options.url, options.async)
+    xhr.send(params)
+  }
+  
+  // 函数表达式改为函数声明
+  function fomateParams (obj) {
+    if (obj === null) {
+      return null
+    }
+    let arr = []
+    for (let key in obj) {
+      arr.push(key + '=' + obj[key])
+    }
+    return arr.join('&')
+  }
+}
 ```
 
   

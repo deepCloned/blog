@@ -93,4 +93,11 @@ const qsParse = function (str) {
 }
 ```
 
-## 使用场景 -- 待续...
+## 使用场景
+
+* JSON.stringify() -- 请求头的 Content-Type 字段的值设为 application/json
+* qs.stringify() -- 请求头的 Content-Type 字段的值设为 application/x-www-form-urlencoded
+
+**如何设置请求头**
+xhr 是一个 XMLHttpRequest 实例
+xhr.setRequestHeader('Content-Type', 'application/json')

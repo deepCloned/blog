@@ -27,7 +27,7 @@ let dateString = JSON.stringify(date)
 typeof dateString  // "string"
 ```
 
-* JSON 不允许包含函数，JSON.stringify() 会把对象中的函数的键和值都删除掉
+* JSON 不允许包含函数，JSON.stringify() 会把对象中的函数的键和值都删除掉，单纯函数会被转成 undefined
 
 ```
 let obj = {
@@ -36,6 +36,8 @@ let obj = {
 let objString = JSON.stringify(obj)
 // objString => {}
 ```
+
+* RegExp -- 会被转化成空对象
 
 ## JSON.parse()
 > * 既然说到的 JSON.stringify()，就不得不提到 JSON.parse()。
